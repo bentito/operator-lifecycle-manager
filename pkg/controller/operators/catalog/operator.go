@@ -1453,7 +1453,7 @@ func (o *Operator) unpackBundles(plan *v1alpha1.InstallPlan) (bool, *v1alpha1.In
 		}
 
 		// Ensure that bundle can be applied by the current version of OLM by converting to steps
-		steps, err := resolver.NewStepsFromBundle(res.Bundle(), out.GetNamespace(), res.Replaces, res.CatalogSourceRef.Name, res.CatalogSourceRef.Namespace)
+		steps, err := resolver.NewStepsFromBundle(res.Bundle().Bundle, out.GetNamespace(), res.Replaces, res.CatalogSourceRef.Name, res.CatalogSourceRef.Namespace)
 		if err != nil {
 			if fatal := olmerrors.IsFatal(err); fatal {
 				return false, nil, err
@@ -1463,7 +1463,7 @@ func (o *Operator) unpackBundles(plan *v1alpha1.InstallPlan) (bool, *v1alpha1.In
 			unpacked = false
 			continue
 		}
-
+		o.logger.Debugf("We could warn about deprecated channels here, n'est pas?")
 		// step manifests are replaced with references to the configmap containing them
 		for i, s := range steps {
 			ref := UnpackedBundleReference{
@@ -1483,6 +1483,11 @@ func (o *Operator) unpackBundles(plan *v1alpha1.InstallPlan) (bool, *v1alpha1.In
 			}
 			s.Resource.Manifest = string(r)
 			steps[i] = s
+		}
+		if res.Bundle().ChannelDeprecated {
+			go o.recorder.Eventf(out, corev1.EventTypeWarning, "UsingDeprecatedChannel",
+				"Channel %s is deprecated, consider switching to %s instead",
+				res.Bundle().Bundle.ChannelName, res.Bundle().MoveToChannelOnDeprecation)
 		}
 		res.RemoveCondition(resolver.BundleLookupConditionPacked)
 		out.Status.BundleLookups[i] = *res.BundleLookup

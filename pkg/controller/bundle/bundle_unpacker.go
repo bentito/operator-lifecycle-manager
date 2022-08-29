@@ -52,8 +52,22 @@ type BundleUnpackResult struct {
 	name   string
 }
 
-func (b *BundleUnpackResult) Bundle() *api.Bundle {
-	return b.bundle
+func (b *BundleUnpackResult) Bundle() BundleWithChannelDeprecation {
+	return mockAddChannelDeprecationToBundle(b.bundle)
+}
+
+type BundleWithChannelDeprecation struct {
+	*api.Bundle
+	ChannelDeprecated          bool
+	MoveToChannelOnDeprecation string
+}
+
+func mockAddChannelDeprecationToBundle(b *api.Bundle) BundleWithChannelDeprecation {
+	var bMod BundleWithChannelDeprecation
+	bMod.Bundle = b
+	bMod.ChannelDeprecated = true
+	bMod.MoveToChannelOnDeprecation = "stable"
+	return bMod
 }
 
 func (b *BundleUnpackResult) Name() string {
@@ -532,7 +546,7 @@ func (c *ConfigMapUnpacker) UnpackBundle(lookup *operatorsv1alpha1.BundleLookup,
 		return
 	}
 
-	if result.Bundle() == nil || len(result.Bundle().GetObject()) == 0 {
+	if result.Bundle().Bundle == nil || len(result.Bundle().Bundle.GetObject()) == 0 {
 		return
 	}
 
